@@ -3,14 +3,14 @@
 以下は、RoadLib の SegFormer ベースモデルを用いて NuScenes 相当データから路面サインを検出・分類・ラベリングするために必要なタスク一覧です。
 
 ## 1. 依存調査
-- [ ] RoadLib リポジトリの `requirements.txt` / `environment.yml` / README から依存パッケージを抽出（PyTorch, MMCV/MMEngine, mmsegmentation, numpy, opencv-python, pycocotools など）。
-- [ ] CUDA 対応バージョンの確認（PyTorch + torchvision の互換表と、mmcv/mmengine のビルド要件を整理）。
-- [ ] NuScenes 入力を扱うためのユーティリティ有無確認（データローダや変換スクリプトの場所を特定）。
+- [x] RoadLib リポジトリの `requirements.txt` / `environment.yml` / README から依存パッケージを抽出（PyTorch, MMCV/MMEngine, mmsegmentation, numpy, opencv-python, pycocotools など）。
+- [x] CUDA 対応バージョンの確認（PyTorch + torchvision の互換表と、mmcv/mmengine のビルド要件を整理）。
+- [x] NuScenes 入力を扱うためのユーティリティ有無確認（データローダや変換スクリプトの場所を特定）。
 
 ## 2. モデル・チェックポイント
-- [ ] 公開チェックポイントのダウンロード手順を確立（ダウンロード URL、検証用の SHA/MD5）。
-- [ ] RoadLib リポジトリ内の SegFormer 設定ファイル（config）を確認し、対応する checkpoint を配置するパスを決定。
-- [ ] 推論スクリプトが参照するパスの統一（例: `/workspace/weights/segformer.pth`）。
+- [x] 公開チェックポイントのダウンロード手順を確立（ダウンロード URL、検証用の SHA/MD5）。
+- [x] RoadLib リポジトリ内の SegFormer 設定ファイル（config）を確認し、対応する checkpoint を配置するパスを決定。
+- [x] 推論スクリプトが参照するパスの統一（例: `/workspace/weights/segformer.pth`）。
 
 ## 3. 入力・出力仕様
 - [ ] NuScenes 形式の 6 カメラ画像/フレームのパス構造を定義（例: `samples/CAM_FRONT/*.jpg` など）。
@@ -19,12 +19,12 @@
 - [ ] ラベリング対象クラスの一覧を SegFormer 設定から抽出し、マッピング表を作成。
 
 ## 4. Dockerfile 設計
-- [ ] ベースイメージ選定（例: `nvidia/cuda:<version>-cudnn-runtime-ubuntu20.04`）。
-- [ ] OS 依存パッケージ（git, wget, build-essential, python3-dev, ffmpeg 等）のインストール。
-- [ ] PyTorch + CUDA 対応バージョンのインストールコマンドを確定（pip/conda）。
-- [ ] mmcv/mmengine/mmsegmentation のインストール手順（適合する CUDA / Torch バージョンでのビルド or prebuilt wheel）。
-- [ ] RoadLib のクローン、必要なサブモジュール取得、環境変数設定。
-- [ ] チェックポイントとデータをマウント/配置するためのディレクトリ構成（`/workspace/data`, `/workspace/weights` 等）。
+- [x] ベースイメージ選定（例: `nvidia/cuda:<version>-cudnn-runtime-ubuntu20.04`）。
+- [x] OS 依存パッケージ（git, wget, build-essential, python3-dev, ffmpeg 等）のインストール。
+- [x] PyTorch + CUDA 対応バージョンのインストールコマンドを確定（pip/conda）。
+- [x] mmcv/mmengine/mmsegmentation のインストール手順（適合する CUDA / Torch バージョンでのビルド or prebuilt wheel）。
+- [x] RoadLib のクローン、必要なサブモジュール取得、環境変数設定。
+- [x] チェックポイントとデータをマウント/配置するためのディレクトリ構成（`/workspace/data`, `/workspace/weights` 等）。
 
 ## 5. docker-compose 設計
 - [ ] GPU パススルー設定（`deploy.resources.reservations.devices` もしくは `runtime: nvidia`）。
