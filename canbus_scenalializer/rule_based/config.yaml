@@ -1,0 +1,6 @@
+thresholds:
+  stop_speed_threshold: 0.1  # m/s (approx 0.36 km/h)
+  turn_steering_threshold: 0.5 # rad (approx 28 degrees)
+  lane_change_steering_threshold: 0.05 # rad (approx 3 degrees)
+  yaw_rate_threshold: 0.1 # rad/s
+  turn_signal_on_threshold: 0.5 # Assuming 1 is ON, 0 is OFF

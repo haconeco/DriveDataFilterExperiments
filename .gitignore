@@ -212,3 +212,5 @@ data/nuscenes
 
 segformer/output
 segformer/weights/
+
+*log.txt
