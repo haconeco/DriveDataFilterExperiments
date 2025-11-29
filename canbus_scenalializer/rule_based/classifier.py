@@ -6,7 +6,6 @@ class RuleBasedClassifier:
         with open(config_path, 'r') as f:
             self.config = json.load(f)
         self.thresholds = self.config['thresholds']
-
     def classify(self, can_data):
         """
         Classify a sequence of CAN data.

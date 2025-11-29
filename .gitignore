@@ -214,3 +214,4 @@ segformer/output
 segformer/weights/
 
 *log.txt
+output/

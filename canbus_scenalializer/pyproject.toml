@@ -1,0 +1,13 @@
+[project]
+name = "canbus-scenalializer"
+version = "0.1.0"
+description = "Scenario classifier for CAN bus data"
+requires-python = "==3.10.*"
+dependencies = [
+    "nuscenes-devkit",
+    "opencv-python",
+    "numpy<2",
+    "google-generativeai",
+    "tqdm",
+    "python-dotenv",
+]
