@@ -53,15 +53,25 @@ class TestRoadMarkingDetector(unittest.TestCase):
         class_ids = sorted([inst['class_id'] for inst in instances])
         self.assertEqual(class_ids, [1, 2])
 
-    def test_process_image_flow(self):
-        # Mock inferencer return value
-        dummy_mask = np.zeros((512, 1024), dtype=np.uint8)
-        self.detector.inferencer.return_value = {'predictions': dummy_mask}
+    def test_process_batch_flow(self):
+        # Mock inferencer return value for batch
+        dummy_mask1 = np.zeros((512, 1024), dtype=np.uint8)
+        dummy_mask2 = np.zeros((512, 1024), dtype=np.uint8)
         
-        result = self.detector.process_image("dummy_path.jpg")
+        # MMSegInferencer returns dict with list of predictions
+        self.detector.inferencer.return_value = {'predictions': [dummy_mask1, dummy_mask2]}
         
-        self.assertIn('predictions', result)
+        results = self.detector.process_batch(["img1.jpg", "img2.jpg"], batch_size=2)
+        
+        self.assertEqual(len(results), 2)
+        self.assertIn('predictions', results[0])
+        self.assertIn('predictions', results[1])
         self.detector.inferencer.assert_called_once()
+        
+        # Verify arguments passed to inferencer
+        args, kwargs = self.detector.inferencer.call_args
+        self.assertEqual(args[0], ["img1.jpg", "img2.jpg"])
+        self.assertEqual(kwargs['batch_size'], 2)
 
 if __name__ == '__main__':
     unittest.main()

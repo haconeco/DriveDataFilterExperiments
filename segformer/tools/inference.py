@@ -35,18 +35,41 @@ class RoadMarkingDetector:
             device=device
         )
 
-    def process_image(self, img_path):
+    def process_batch(self, img_paths, batch_size=1):
         """
-        Run inference on a single image.
+        Run inference on a batch of images.
+        Args:
+            img_paths (list): List of image paths.
+            batch_size (int): Batch size.
         Returns:
-            result (dict): Inference result containing 'predictions' (mask).
-            vis_image (np.ndarray): Visualization image (if requested by inferencer, but we do manual vis).
+            results (list): List of inference results.
         """
-        # MMSegInferencer returns a dictionary with 'predictions' key which holds the mask
-        # The return format depends on return_datasamples. 
-        # By default (return_datasamples=False), it returns a dict with 'predictions' (mask) and 'visualization'
-        result = self.inferencer(img_path, return_datasamples=False)
-        return result
+        # MMSegInferencer can handle list of inputs
+        # It returns a dictionary with 'predictions' which is a list of masks if input is a list
+        results = self.inferencer(img_paths, batch_size=batch_size, return_datasamples=False)
+        
+        # If input is a list, output 'predictions' is a list of masks
+        # We need to structure it as a list of dicts to match single image output format for consistency
+        # However, MMSegInferencer return format might vary slightly.
+        # Based on source:
+        # results_dict['predictions'] = []
+        # ...
+        # results_dict['predictions'].append(pred_data)
+        # return results_dict
+        
+        # So results['predictions'] should be a list of masks.
+        
+        formatted_results = []
+        predictions = results['predictions']
+        
+        # Handle case where single image input returns single item not list
+        if not isinstance(predictions, list):
+            predictions = [predictions]
+            
+        for pred in predictions:
+            formatted_results.append({'predictions': pred})
+            
+        return formatted_results
 
     def extract_instances(self, mask):
         """
@@ -132,6 +155,8 @@ def main():
     parser.add_argument("--version", default="v1.0-mini", help="NuScenes version")
     parser.add_argument("--output_dir", required=True, help="Output directory")
     parser.add_argument("--visualize", action="store_true", help="Enable visualization")
+    parser.add_argument("--no_save_mask", action="store_true", help="Disable mask saving")
+    parser.add_argument("--batch_size", type=int, default=1, help="Batch size for inference")
     args = parser.parse_args()
 
     # Initialize NuScenes
@@ -155,43 +180,58 @@ def main():
     cameras = ['CAM_FRONT', 'CAM_FRONT_LEFT', 'CAM_FRONT_RIGHT', 'CAM_BACK', 'CAM_BACK_LEFT', 'CAM_BACK_RIGHT']
 
     print("Starting inference...")
-    for sample in tqdm(nusc.sample):
+    print("Starting inference...")
+    
+    # Collect all tasks first to batch them
+    tasks = []
+    for sample in nusc.sample:
         sample_token = sample['token']
         results[sample_token] = {}
         
         for cam_name in cameras:
             if cam_name not in sample['data']:
                 continue
-                
+            
             cam_token = sample['data'][cam_name]
-            cam_data = nusc.get('sample_data', cam_token)
-            
-            # Get absolute path
             img_path = Path(nusc.get_sample_data_path(cam_token))
-            filename = img_path.name
             
-            # Inference
-            inference_result = detector.process_image(str(img_path))
-            
-            # Extract mask (MMSegInferencer returns dict with 'predictions' key)
-            # predictions is usually a numpy array of shape (H, W)
+            tasks.append({
+                'sample_token': sample_token,
+                'cam_name': cam_name,
+                'img_path': str(img_path),
+                'filename': img_path.name
+            })
+
+    # Process in batches
+    for i in tqdm(range(0, len(tasks), args.batch_size)):
+        batch_tasks = tasks[i:i + args.batch_size]
+        batch_paths = [t['img_path'] for t in batch_tasks]
+        
+        # Inference
+        batch_results = detector.process_batch(batch_paths, batch_size=args.batch_size)
+        
+        for j, task in enumerate(batch_tasks):
+            inference_result = batch_results[j]
             mask = inference_result['predictions']
             
             # Extract instances
             instances = detector.extract_instances(mask)
             
-            # Save mask
+            filename = task['filename']
             mask_filename = f"{filename.replace('.jpg', '.png')}"
-            mask_path = mask_dir / mask_filename
-            cv2.imwrite(str(mask_path), mask)
+            
+            # Save mask
+            if not args.no_save_mask:
+                mask_path = mask_dir / mask_filename
+                cv2.imwrite(str(mask_path), mask)
             
             # Visualization
             if args.visualize:
                 vis_path = vis_dir / f"vis_{filename}"
-                detector.visualize(img_path, mask, vis_path)
+                detector.visualize(task['img_path'], mask, vis_path)
             
             # Store results
-            results[sample_token][cam_name] = {
+            results[task['sample_token']][task['cam_name']] = {
                 "filename": filename,
                 "mask_path": str(mask_filename),
                 "instances": instances
