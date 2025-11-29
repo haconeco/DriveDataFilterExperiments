@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  segformer:
+    build: .
+    image: segformer-roadlib:latest
+    container_name: segformer_roadlib
+    runtime: nvidia
+    ipc: host  # Share host IPC for PyTorch DataLoader performance
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+    volumes:
+      # Data mounts
+      - ../data/nuscenes:/workspace/data/nuscenes:ro
+      
+      # Model weights and outputs
+      - ./weights:/workspace/weights
+      - ./output:/workspace/output
+      
+      # Source code mounts for development/reference
+      - ../RoadLib:/workspace/RoadLib_src
+      
+      # X11 forwarding (optional, for visualization)
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
