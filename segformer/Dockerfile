@@ -20,13 +20,15 @@ RUN python3 -m pip install --no-cache-dir \
     torch==2.1.2+cu118 torchvision==0.16.2+cu118 torchaudio==2.1.2 \
     --extra-index-url https://download.pytorch.org/whl/cu118
 
+# Optional dataset/utility dependencies (Install numpy<2.0 first to avoid conflicts)
+RUN python3 -m pip install --no-cache-dir \
+    "numpy<2.0" opencv-python pycocotools pillow scipy tqdm rich matplotlib nuscenes-devkit ftfy regex
+
 # OpenMMLab core dependencies
 RUN python3 -m pip install --no-cache-dir openmim==0.3.9 && \
     mim install --yes "mmengine==0.10.4" "mmcv==2.1.0" "mmsegmentation==1.2.2"
 
-# Optional dataset/utility dependencies
-RUN python3 -m pip install --no-cache-dir \
-    numpy opencv-python pycocotools pillow scipy tqdm rich matplotlib nuscenes-devkit
+
 
 WORKDIR /workspace
 

@@ -19,6 +19,9 @@ services:
       # Model weights and outputs
       - ./weights:/workspace/weights
       - ./output:/workspace/output
+      - ./tests:/workspace/tests
+      - ./tools:/workspace/tools
+      - ../RoadLib/scripts/segformer_whu.py:/workspace/mmsegmentation/configs/segformer/segformer_whu.py
       
       # Source code mounts for development/reference
       - ../RoadLib:/workspace/RoadLib_src
