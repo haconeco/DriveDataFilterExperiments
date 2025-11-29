@@ -30,3 +30,25 @@
 
 ## リンク
 - 参考検討情報: https://gemini.google.com/share/11a138baa398
+
+
+## プロジェクト構造
+```
+DriveDataFilterExperiments/
+├── canbus_scenalializer/
+│   ├── data_format.md
+│   ├── rule_based/
+│   │   ├── classifier.py
+│   │   ├── config.json
+│   │   └── README.md
+│   └── README.md
+├── README.md
+└── uv.lock
+```
+
+
+# Antigravityここが困った
+* ExtensionをインストールするためにMarketplaceをオプショナルに設定する必要があった
+* Vim形式のコマンドを選択したがどこにVim形式コマンドが反映されたかわからない
+* WorkSpacesの中のタスクごとに個別のTerminal Sessionが起動されず（おそらくPowershellの場合のみ？）、環境構築後うまくRuntime Pathが検出されないことがある
+* WorkSpacesの中のタスクごとに個別のFeature Branchを切って作業したいが、個別の環境が立ち上がるわけではなく同じ環境内で作業するためこのような動作をしてくれない。Terminalも共有されている様子

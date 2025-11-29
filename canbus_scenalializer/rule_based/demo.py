@@ -7,10 +7,10 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.append(current_dir)
 
-# Add nuscenes-devkit to sys.path
-nuscenes_path = 'c:\\Users\\chiba\\project\\DriveDataFilterExperiments\\nuscenes-devkit\\python-sdk'
-if nuscenes_path not in sys.path:
-    sys.path.append(nuscenes_path)
+# Add nuscenes-devkit to sys.path - REMOVED (Managed by uv)
+# nuscenes_path = 'c:\\Users\\chiba\\project\\DriveDataFilterExperiments\\nuscenes-devkit\\python-sdk'
+# if nuscenes_path not in sys.path:
+#     sys.path.append(nuscenes_path)
 
 try:
     import json
@@ -45,8 +45,15 @@ def main():
     scene_name = scene['name']
     print(f"Processing scene: {scene_name}")
 
+    # Output directory setup
+    import datetime
+    run_id = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    output_dir = os.path.join(current_dir, '..', 'output', run_id)
+    os.makedirs(output_dir, exist_ok=True)
+    print(f"Output directory created: {output_dir}")
+
     # Video writer setup
-    output_video_path = 'c:\\Users\\chiba\\project\\DriveDataFilterExperiments\\canbus_scenalializer\\rule_based\\demo_output.mp4'
+    output_video_path = os.path.join(output_dir, 'demo_output.mp4')
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = None
 
@@ -55,6 +62,12 @@ def main():
     
     results = []
     frame_count = 0
+    
+    classification_data = {
+        "scene_token": scene['token'],
+        "scene_name": scene_name,
+        "samples": []
+    }
 
     while current_sample_token != '':
         sample = nusc.get('sample', current_sample_token)
@@ -64,6 +77,14 @@ def main():
         
         scenario = classifier._classify_frame(vehicle_state)
         results.append((timestamp, scenario))
+        
+        # Collect structured data
+        classification_data["samples"].append({
+            "sample_token": current_sample_token,
+            "timestamp": timestamp,
+            "scenario": scenario,
+            "vehicle_state": vehicle_state
+        })
         
         # Visualization
         # Get camera image (CAM_FRONT)
@@ -98,6 +119,12 @@ def main():
     if out:
         out.release()
     print(f"Video saved to {output_video_path}")
+    
+    # Save JSON output
+    output_json_path = os.path.join(output_dir, 'classification_results.json')
+    with open(output_json_path, 'w') as f:
+        json.dump(classification_data, f, indent=2)
+    print(f"Classification results saved to {output_json_path}")
 
 def get_vehicle_state(nusc_can, scene_name, timestamp, tolerance=50000):
     """
@@ -117,7 +144,7 @@ def get_vehicle_state(nusc_can, scene_name, timestamp, tolerance=50000):
     # For the sake of the 'demo', let's assume we implement a simple finder.
     
     pose_msgs = nusc_can.get_messages(scene_name, 'pose')
-    steer_msgs = nusc_can.get_messages(scene_name, 'steer_angle_feedback')
+    steer_msgs = nusc_can.get_messages(scene_name, 'steeranglefeedback')
     
     # Find message closest to timestamp
     pose = find_closest_msg(pose_msgs, timestamp, tolerance)
