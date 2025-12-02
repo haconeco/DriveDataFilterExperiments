@@ -10,4 +10,7 @@ dependencies = [
     "google-generativeai",
     "tqdm",
     "python-dotenv",
+    "scikit-learn",
+    "matplotlib",
+    "PyYAML",
 ]

@@ -32,7 +32,7 @@ def main():
         return
 
     # Initialize Classifier
-    config_path = os.path.join(current_dir, 'config.json')
+    config_path = os.path.join(current_dir, 'config.yaml')
     classifier = RuleBasedClassifier(config_path)
 
     # Output directory setup (Run ID)
@@ -41,8 +41,8 @@ def main():
     os.makedirs(base_output_dir, exist_ok=True)
     print(f"Base output directory created: {base_output_dir}")
 
-    # Process first 10 scenes
-    scenes_to_process = nusc.scene[:10]
+    # Process all scenes
+    scenes_to_process = nusc.scene
     print(f"Processing {len(scenes_to_process)} scenes...")
 
     for i, scene in enumerate(scenes_to_process):

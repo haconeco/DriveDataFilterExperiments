@@ -37,7 +37,7 @@ def main():
         return
 
     # Initialize Classifier
-    config_path = 'c:\\Users\\chiba\\project\\DriveDataFilterExperiments\\canbus_scenalializer\\rule_based\\config.json'
+    config_path = 'c:\\Users\\chiba\\project\\DriveDataFilterExperiments\\canbus_scenalializer\\rule_based\\config.yaml'
     classifier = RuleBasedClassifier(config_path)
 
     # Pick a scene

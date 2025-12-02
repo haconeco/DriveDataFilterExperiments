@@ -1,10 +1,10 @@
-import json
+import yaml
 import numpy as np
 
 class RuleBasedClassifier:
     def __init__(self, config_path):
         with open(config_path, 'r') as f:
-            self.config = json.load(f)
+            self.config = yaml.safe_load(f)
         self.thresholds = self.config['thresholds']
     def classify(self, can_data):
         """
