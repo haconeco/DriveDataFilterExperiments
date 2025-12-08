@@ -104,7 +104,7 @@ def load_data(dataroot, version='v1.0-mini'):
             
     return np.array(speeds), np.array(steerings), np.array(yaw_rates)
 
-def fit_gmm_and_find_threshold(data, n_components, threshold_percentile=99, lower_bound=True):
+def fit_gmm_and_find_thresholds(data, n_components, sigma=2.0):
     # Reshape for sklearn
     X = data.reshape(-1, 1)
     gmm = GaussianMixture(n_components=n_components, random_state=42)
@@ -114,24 +114,22 @@ def fit_gmm_and_find_threshold(data, n_components, threshold_percentile=99, lowe
     means = gmm.means_.flatten()
     sorted_indices = np.argsort(means)
     
-    # For speed: Component 0 is likely "Stop", Component 1+ is "Move"
-    # For steering: Component 0 is likely "Straight", Component 1+ is "Turn"
+    thresholds = []
     
-    # We want to find a boundary.
-    # Simple approach: Take the dominant "low value" component (Stop/Straight) 
-    # and find the value where its PDF drops or a specific percentile.
+    # For each component i (except the last one), find the boundary to the next component
+    # We define the boundary as mean_i + sigma * std_i
+    for i in range(n_components - 1):
+        idx = sorted_indices[i]
+        mean = means[idx]
+        cov = gmm.covariances_.flatten()[idx]
+        std = np.sqrt(cov)
+        
+        threshold = mean + sigma * std
+        thresholds.append(threshold)
     
-    low_component_idx = sorted_indices[0]
-    mean = means[low_component_idx]
-    cov = gmm.covariances_.flatten()[low_component_idx]
-    std = np.sqrt(cov)
-    
-    # Suggest threshold as mean + 3*std (approx 99.7% of the component)
-    threshold = mean + 3 * std
-    
-    return threshold, gmm
+    return thresholds, gmm
 
-def plot_distribution(data, gmm, threshold, title, xlabel, filename):
+def plot_distribution(data, gmm, thresholds, title, xlabel, filename):
     plt.figure(figsize=(10, 6))
     
     # Plot histogram
@@ -151,8 +149,11 @@ def plot_distribution(data, gmm, threshold, title, xlabel, filename):
         pdf_comp = weight * (1 / np.sqrt(2 * np.pi * var)) * np.exp(- (x - mean)**2 / (2 * var))
         plt.plot(x, pdf_comp, '--', label=f'Component {i+1}')
 
-    # Plot threshold
-    plt.axvline(threshold, color='r', linestyle='dashed', linewidth=2, label=f'Threshold: {threshold:.3f}')
+    # Plot thresholds
+    colors = ['r', 'b', 'm', 'c']
+    for i, threshold in enumerate(thresholds):
+        color = colors[i % len(colors)]
+        plt.axvline(threshold, color=color, linestyle='dashed', linewidth=2, label=f'Threshold {i+1}: {threshold:.3f}')
     
     plt.title(title)
     plt.xlabel(xlabel)
@@ -181,44 +182,69 @@ def main():
     
     output_dir = os.path.dirname(os.path.abspath(__file__))
     
-    # 1. Speed Threshold (Stop vs Move)
-    # Fit 2 components: Stop (near 0) and Move
-    print("Fitting Speed GMM...")
-    stop_speed_threshold, speed_gmm = fit_gmm_and_find_threshold(speeds, n_components=2)
-    plot_distribution(speeds, speed_gmm, stop_speed_threshold, 'Speed Distribution', 'Speed (m/s)', os.path.join(output_dir, 'dist_speed.png'))
+    # 1. Speed Thresholds (Stop -> Slow/Pull Over -> Cruising)
+    # Fit 3 components
+    print("Fitting Speed GMM (3 components)...")
+    speed_thresholds, speed_gmm = fit_gmm_and_find_thresholds(speeds, n_components=3)
+    stop_speed_threshold = speed_thresholds[0]
+    pull_over_speed_threshold = speed_thresholds[1]
     
-    # 2. Steering Threshold (Straight vs Turn)
-    # Fit 2 components: Straight (near 0) and Turn
-    print("Fitting Steering GMM...")
-    turn_steering_threshold, steer_gmm = fit_gmm_and_find_threshold(steerings, n_components=2)
-    plot_distribution(steerings, steer_gmm, turn_steering_threshold, 'Steering Angle Distribution', 'Steering Angle (rad)', os.path.join(output_dir, 'dist_steering.png'))
+    plot_distribution(speeds, speed_gmm, speed_thresholds, 'Speed Distribution', 'Speed (m/s)', os.path.join(output_dir, 'dist_speed.png'))
     
-    # Lane change is subtle, usually smaller than turn. 
-    # Maybe we can define lane change as something between "Strictly Straight" and "Turn".
-    # For now, let's use a fraction of the turn threshold or a separate analysis if we had labels.
-    # Let's heuristically set lane_change as 1/3 of turn threshold or 1 sigma?
-    # Let's use 1 sigma of the straight component for lane change start?
-    # Actually, let's stick to the GMM result. The "Straight" component width defines "Cruising".
-    # Anything outside "Straight" but not yet "Turn" could be Lane Change?
-    # Let's set lane_change_threshold as mean + 1*std of straight component.
+    # 2. Steering Thresholds (Straight -> Lane Change -> Turn -> U-Turn)
+    # Fit 3 components: Straight, Turn, U-Turn
+    # We want to capture "Normal Turns" which might be the lower end of the "Turn" component.
+    print("Fitting Steering GMM (3 components)...")
+    steer_thresholds, steer_gmm = fit_gmm_and_find_thresholds(steerings, n_components=3)
+    
+    # Threshold 0: Straight -> Turn (Use this for Lane Change start?)
+    # Threshold 1: Turn -> U-Turn
+    
+    # Let's define:
+    # Lane Change Threshold = Threshold 0 (Upper bound of Straight)
+    # Turn Threshold = Threshold 0 (Any non-straight is a turn candidate?)
+    # But we want to distinguish Lane Change from Turn.
+    # Lane Change is usually small steering. Turn is larger.
+    # If we only have 3 components, Component 1 is "Turn".
+    # Maybe we can set Turn Threshold to be slightly inside Component 1?
+    # Or just use Threshold 0 for Lane Change, and (Threshold 0 + Mean 1)/2 for Turn?
+    
+    lane_change_steering_threshold = steer_thresholds[0]
     
     means = steer_gmm.means_.flatten()
     sorted_indices = np.argsort(means)
-    straight_idx = sorted_indices[0]
-    straight_std = np.sqrt(steer_gmm.covariances_.flatten()[straight_idx])
-    lane_change_steering_threshold = means[straight_idx] + 1.5 * straight_std # 1.5 sigma
+    turn_idx = sorted_indices[1]
+    turn_mean = means[turn_idx]
     
-    # 3. Yaw Rate Threshold
-    print("Fitting Yaw Rate GMM...")
-    yaw_rate_threshold, yaw_gmm = fit_gmm_and_find_threshold(yaw_rates, n_components=2)
-    plot_distribution(yaw_rates, yaw_gmm, yaw_rate_threshold, 'Yaw Rate Distribution', 'Yaw Rate (rad/s)', os.path.join(output_dir, 'dist_yaw.png'))
+    # Heuristic: Turn starts halfway between Straight limit and Turn mean?
+    # Or just use Threshold 0 + small buffer?
+    # Let's try: Turn Threshold = Lane Change Threshold * 1.5?
+    # Or let's look at the gap.
+    # If Threshold 0 is 0.3 and Mean 1 is 1.5.
+    # Lane Change is > 0.3. Turn is > ?
+    # Let's set Turn Threshold to (Threshold 0 + Turn Mean) / 2.
+    turn_steering_threshold = (lane_change_steering_threshold + turn_mean) / 2
+    
+    u_turn_steering_threshold = steer_thresholds[1]
+    
+    plot_distribution(steerings, steer_gmm, [lane_change_steering_threshold, turn_steering_threshold, u_turn_steering_threshold], 'Steering Angle Distribution', 'Steering Angle (rad)', os.path.join(output_dir, 'dist_steering.png'))
+    
+    # 3. Yaw Rate Threshold (Straight -> Turn)
+    # Fit 2 components (Keep simple for now, or 3 if we want sharp turns)
+    print("Fitting Yaw Rate GMM (2 components)...")
+    yaw_thresholds, yaw_gmm = fit_gmm_and_find_thresholds(yaw_rates, n_components=2)
+    yaw_rate_threshold = yaw_thresholds[0]
+    
+    plot_distribution(yaw_rates, yaw_gmm, yaw_thresholds, 'Yaw Rate Distribution', 'Yaw Rate (rad/s)', os.path.join(output_dir, 'dist_yaw.png'))
     
     # Generate Config
     new_config = {
         "thresholds": {
             "stop_speed_threshold": float(stop_speed_threshold),
-            "turn_steering_threshold": float(turn_steering_threshold),
+            "pull_over_speed_threshold": float(pull_over_speed_threshold),
             "lane_change_steering_threshold": float(lane_change_steering_threshold),
+            "turn_steering_threshold": float(turn_steering_threshold),
+            "u_turn_steering_threshold": float(u_turn_steering_threshold),
             "yaw_rate_threshold": float(yaw_rate_threshold),
             "turn_signal_on_threshold": 0.5 # Keep default
         }

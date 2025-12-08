@@ -47,7 +47,11 @@ class RuleBasedClassifier:
         if frame.get('gear') == 'R':
              return "Reverse"
 
-        # 3. Turn (High steering angle or high yaw rate)
+        # 3. U-Turn (Very high steering angle)
+        if steering > self.thresholds['u_turn_steering_threshold']:
+             return "U-Turn"
+
+        # 4. Turn (High steering angle or high yaw rate)
         if steering > self.thresholds['turn_steering_threshold']:
             # Determine Left or Right based on sign if available, or signal
             # Assuming steering_angle > 0 is Left (standard in many ISO), but need to verify dataset specific.
@@ -57,7 +61,11 @@ class RuleBasedClassifier:
             else:
                 return "Right Turn"
 
-        # 4. Lane Change (Moderate steering + Turn Signal)
+        # 5. Pull Over (Signal + Steering + Low Speed)
+        if turn_signal != 0 and steering > self.thresholds['lane_change_steering_threshold'] and speed < self.thresholds['pull_over_speed_threshold']:
+             return "Pull Over"
+
+        # 6. Lane Change (Moderate steering + Turn Signal)
         # Note: Lane change is hard to distinguish from curve without map, but signal is a strong cue.
         if turn_signal != 0 and steering > self.thresholds['lane_change_steering_threshold']:
              return "Lane Change"

@@ -1,0 +1,2 @@
+Average classification time per frame: 0.000000 seconds
+Total classification time for 39 frames: 0.000000 seconds

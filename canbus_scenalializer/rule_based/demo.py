@@ -69,13 +69,23 @@ def main():
         "samples": []
     }
 
+    import time
+    total_classification_time = 0
+    classification_count = 0
+
     while current_sample_token != '':
         sample = nusc.get('sample', current_sample_token)
         timestamp = sample['timestamp'] # Microseconds
 
         vehicle_state = get_vehicle_state(nusc_can, scene_name, timestamp)
         
+        start_time = time.time()
         scenario = classifier._classify_frame(vehicle_state)
+        end_time = time.time()
+        
+        total_classification_time += (end_time - start_time)
+        classification_count += 1
+        
         results.append((timestamp, scenario))
         
         # Collect structured data
@@ -115,6 +125,14 @@ def main():
             print(f"Processed {frame_count} frames...")
 
         current_sample_token = sample['next']
+        
+    if classification_count > 0:
+        avg_time = total_classification_time / classification_count
+        msg = f"Average classification time per frame: {avg_time:.6f} seconds\nTotal classification time for {classification_count} frames: {total_classification_time:.6f} seconds"
+        print(msg)
+        with open('execution_time.txt', 'w') as f:
+            f.write(msg)
+        sys.stdout.flush()
 
     if out:
         out.release()
@@ -145,10 +163,12 @@ def get_vehicle_state(nusc_can, scene_name, timestamp, tolerance=50000):
     
     pose_msgs = nusc_can.get_messages(scene_name, 'pose')
     steer_msgs = nusc_can.get_messages(scene_name, 'steeranglefeedback')
+    monitor_msgs = nusc_can.get_messages(scene_name, 'vehicle_monitor')
     
     # Find message closest to timestamp
     pose = find_closest_msg(pose_msgs, timestamp, tolerance)
     steer = find_closest_msg(steer_msgs, timestamp, tolerance)
+    monitor = find_closest_msg(monitor_msgs, timestamp, tolerance)
     
     state = {}
     if pose:
@@ -158,9 +178,20 @@ def get_vehicle_state(nusc_can, scene_name, timestamp, tolerance=50000):
     if steer:
         state['steering_angle'] = steer['value']
 
-    # Turn signal is in 'vehicle_monitor' usually, but might not be populated in all datasets.
-    # We'll default to 0.
-    state['turn_signal'] = 0 
+    if monitor:
+        # Debug: Print keys if we haven't seen them
+        # print(f"Monitor keys: {monitor.keys()}")
+        # Check for known keys
+        if 'turn_signal' in monitor:
+            state['turn_signal'] = monitor['turn_signal']
+        elif 'left_turn_signal' in monitor and 'right_turn_signal' in monitor:
+             # Maybe separate signals?
+             state['turn_signal'] = 1 if monitor['left_turn_signal'] else (2 if monitor['right_turn_signal'] else 0)
+        else:
+             # print(f"Warning: turn_signal not found in monitor message: {monitor}")
+             state['turn_signal'] = 0
+    else:
+        state['turn_signal'] = 0 
     
     return state
 

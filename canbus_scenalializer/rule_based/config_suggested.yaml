@@ -1,0 +1,8 @@
+thresholds:
+  lane_change_steering_threshold: 0.281887354013987
+  pull_over_speed_threshold: 11.373230954940297
+  stop_speed_threshold: 0.00205713446382244
+  turn_signal_on_threshold: 0.5
+  turn_steering_threshold: 1.0131709849339237
+  u_turn_steering_threshold: 4.327450123127098
+  yaw_rate_threshold: 0.01912236023597878
