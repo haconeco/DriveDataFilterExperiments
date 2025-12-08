@@ -2,6 +2,42 @@
 
 This directory contains the rule-based scenario classifier and associated tools.
 
+## Prerequisites
+
+Before running any scripts, ensure you have the necessary data and environment set up.
+
+### 1. Data Setup
+
+The scripts expect the NuScenes dataset to be located at `../../data/nuscenes` (relative to this directory).
+Specifically, you need the **CAN bus expansion** data.
+
+**Directory Structure:**
+
+```text
+project_root/
+  ├── data/
+  │   └── nuscenes/
+  │       ├── can_bus/          <-- Required: Contains scene-*.json files
+  │       ├── v1.0-mini/        <-- Required for demo/testing
+  │       ├── maps/             <-- Required for NuScenes initialization
+  │       └── ...
+  └── canbus_scenalializer/
+      └── rule_based/           <-- You are here
+```
+
+If your data is located elsewhere, you may need to modify the `dataroot` variable in the scripts or pass it as an argument (where supported, e.g., `tune_thresholds.py`).
+
+### 2. Environment Setup
+
+This project uses `uv` for dependency management. Ensure `uv` is installed.
+
+```bash
+# Install dependencies (if not already done)
+uv sync
+```
+
+All scripts should be run using `uv run` to ensure they use the correct virtual environment and dependencies.
+
 ## Configuration
 
 The classification logic is controlled by `config.yaml`. This file defines the thresholds used to categorize vehicle behavior.
